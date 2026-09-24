@@ -144,6 +144,21 @@ add_location:
       selector:
         text:
 
+rename_location:
+  name: Premenovať miestnosť
+  description: Premenuje miestnosť. Ak cieľový názov už existuje, položky sa zlúčia do nej.
+  fields:
+    name:
+      name: Pôvodný názov
+      required: true
+      selector:
+        text:
+    new_name:
+      name: Nový názov
+      required: true
+      selector:
+        text:
+
 remove_location:
   name: Odstrániť miestnosť
   description: Odstráni miestnosť. Položky sa presunú do prvej zostávajúcej miestnosti.

@@ -49,6 +49,7 @@ SERVICE_REMOVE_ITEM = "remove_item"
 SERVICE_CONSUME = "consume"
 SERVICE_RESTOCK = "restock"
 SERVICE_ADD_LOCATION = "add_location"
+SERVICE_RENAME_LOCATION = "rename_location"
 SERVICE_REMOVE_LOCATION = "remove_location"
 
 _ADD_ITEM_SCHEMA = vol.Schema(
@@ -88,6 +89,10 @@ _QUANTITY_CHANGE_SCHEMA = vol.Schema(
 )
 
 _LOCATION_SCHEMA = vol.Schema({vol.Required(ATTR_NAME): cv.string})
+
+_RENAME_LOCATION_SCHEMA = vol.Schema(
+    {vol.Required(ATTR_NAME): cv.string, vol.Required("new_name"): cv.string}
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -265,6 +270,12 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         async_dispatcher_send(hass, f"{SIGNAL_LOCATIONS_UPDATED}_{entry_id}")
         await _save_and_notify(entry_id, store)
 
+    async def handle_rename_location(call: ServiceCall) -> None:
+        entry_id, store = _first_store(hass)
+        store.rename_location(call.data[ATTR_NAME], call.data["new_name"])
+        async_dispatcher_send(hass, f"{SIGNAL_LOCATIONS_UPDATED}_{entry_id}")
+        await _save_and_notify(entry_id, store)
+
     async def handle_remove_location(call: ServiceCall) -> None:
         entry_id, store = _first_store(hass)
         store.remove_location(call.data[ATTR_NAME])
@@ -276,4 +287,5 @@ async def _async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_CONSUME, handle_consume, schema=_QUANTITY_CHANGE_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_RESTOCK, handle_restock, schema=_QUANTITY_CHANGE_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_ADD_LOCATION, handle_add_location, schema=_LOCATION_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_RENAME_LOCATION, handle_rename_location, schema=_RENAME_LOCATION_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_REMOVE_LOCATION, handle_remove_location, schema=_LOCATION_SCHEMA)

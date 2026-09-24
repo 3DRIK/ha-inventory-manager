@@ -83,6 +83,20 @@ class InventoryManagerStore:
                     self.locations[0] if self.locations else "Nezaradené"
                 )
 
+    def rename_location(self, old_name: str, new_name: str) -> None:
+        old_name = old_name.strip()
+        new_name = new_name.strip()
+        if not new_name or old_name not in self.locations or new_name == old_name:
+            return
+        if new_name in self.locations:
+            # Target name already exists -> merge old into it.
+            self.locations.remove(old_name)
+        else:
+            self.locations[self.locations.index(old_name)] = new_name
+        for item in self.items.values():
+            if item["location"] == old_name:
+                item["location"] = new_name
+
     # ------------------------------------------------------------------
     # Items
     # ------------------------------------------------------------------

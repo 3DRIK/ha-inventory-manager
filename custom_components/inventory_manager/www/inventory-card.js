@@ -13,6 +13,9 @@ class InventoryCard extends HTMLElement {
     this._activeLocation = null;
     this._showAddForm = false;
     this._editingItemId = null;
+    this._locationMenuFor = null;
+    this._longPressTimer = null;
+    this._longPressTriggered = false;
     this._unsubEvents = null;
     this._initialized = false;
   }
@@ -118,6 +121,7 @@ class InventoryCard extends HTMLElement {
     content.appendChild(this._renderAddForm());
 
     card.appendChild(content);
+    card.appendChild(this._renderLocationMenu());
     root.appendChild(card);
   }
 
@@ -129,7 +133,29 @@ class InventoryCard extends HTMLElement {
       const tab = document.createElement("button");
       tab.className = "tab" + (loc === this._activeLocation ? " active" : "");
       tab.textContent = loc;
+      tab.title = "Podrž pre premenovanie/zmazanie";
+
+      tab.addEventListener("pointerdown", () => {
+        this._longPressTriggered = false;
+        this._longPressTimer = setTimeout(() => {
+          this._longPressTriggered = true;
+          this._locationMenuFor = loc;
+          this._render();
+        }, 550);
+      });
+      const cancelLongPress = () => {
+        clearTimeout(this._longPressTimer);
+      };
+      tab.addEventListener("pointerup", cancelLongPress);
+      tab.addEventListener("pointerleave", cancelLongPress);
+      tab.addEventListener("pointercancel", cancelLongPress);
+      tab.addEventListener("contextmenu", (e) => e.preventDefault());
+
       tab.addEventListener("click", () => {
+        if (this._longPressTriggered) {
+          this._longPressTriggered = false;
+          return;
+        }
         this._activeLocation = loc;
         this._editingItemId = null;
         this._render();
@@ -145,6 +171,64 @@ class InventoryCard extends HTMLElement {
     tabs.appendChild(addLocBtn);
 
     return tabs;
+  }
+
+  _renderLocationMenu() {
+    if (!this._locationMenuFor) return document.createDocumentFragment();
+    const loc = this._locationMenuFor;
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        this._locationMenuFor = null;
+        this._render();
+      }
+    });
+
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML = `
+      <div class="modal-title">Miestnosť: ${this._esc(loc)}</div>
+      <input type="text" id="rename-input" value="${this._esc(loc)}" />
+      <button id="rename-btn" class="add-btn">Premenovať</button>
+      <button id="delete-btn" class="danger-btn">Zmazať miestnosť</button>
+      <button id="close-btn" class="secondary-btn">Zavrieť</button>
+    `;
+    overlay.appendChild(modal);
+
+    modal.querySelector("#rename-btn").addEventListener("click", async () => {
+      const newName = modal.querySelector("#rename-input").value.trim();
+      this._locationMenuFor = null;
+      if (newName && newName !== loc) {
+        if (this._activeLocation === loc) this._activeLocation = newName;
+        await this._call("rename_location", { old_name: loc, new_name: newName });
+      } else {
+        this._render();
+      }
+    });
+
+    modal.querySelector("#delete-btn").addEventListener("click", async () => {
+      if (this._data.locations.length <= 1) {
+        alert("Toto je jediná miestnosť, nedá sa zmazať.");
+        return;
+      }
+      if (!confirm(`Naozaj zmazať miestnosť "${loc}"? Položky sa presunú do inej miestnosti.`)) {
+        return;
+      }
+      this._locationMenuFor = null;
+      if (this._activeLocation === loc) {
+        this._activeLocation = this._data.locations.find((l) => l !== loc) || null;
+      }
+      await this._call("remove_location", { name: loc });
+    });
+
+    modal.querySelector("#close-btn").addEventListener("click", () => {
+      this._locationMenuFor = null;
+      this._render();
+    });
+
+    return overlay;
   }
 
   async _promptAddLocation() {
@@ -403,6 +487,7 @@ const CSS = `
     color: var(--primary-text-color);
     border: none; border-radius: 16px; padding: 6px 14px;
     font-size: 0.9em; cursor: pointer;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
   }
   .tab.active { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .tab.add-location { font-weight: bold; padding: 6px 12px; }
@@ -461,6 +546,28 @@ const CSS = `
     background: var(--card-background-color); color: var(--primary-text-color);
   }
   .edit-form .hint { font-size: 0.75em; opacity: 0.6; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; padding: 16px; box-sizing: border-box;
+  }
+  .modal {
+    background: var(--card-background-color, #1e1e1e);
+    border-radius: 16px; padding: 16px; width: 100%; max-width: 320px;
+    display: flex; flex-direction: column; gap: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .modal-title { font-weight: 600; margin-bottom: 4px; }
+  .modal input {
+    padding: 8px; border-radius: 8px;
+    border: 1px solid var(--divider-color, #444);
+    background: var(--card-background-color); color: var(--primary-text-color);
+  }
+  .danger-btn {
+    width: 100%; padding: 8px; border-radius: 10px; border: none;
+    background: var(--error-color, #f44336); color: #fff;
+    cursor: pointer; font-weight: 500;
+  }
 `;
 
 customElements.define("inventory-card", InventoryCard);

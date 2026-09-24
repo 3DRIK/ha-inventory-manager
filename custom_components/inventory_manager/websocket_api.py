@@ -160,6 +160,23 @@ async def ws_add_location(hass: HomeAssistant, connection, msg) -> None:
 
 
 @websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/rename_location",
+        vol.Required("old_name"): str,
+        vol.Required("new_name"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_rename_location(hass: HomeAssistant, connection, msg) -> None:
+    entry_id, store = _get_store(hass, None)
+    store.rename_location(msg["old_name"], msg["new_name"])
+    await store.async_save()
+    async_dispatcher_send(hass, f"{SIGNAL_LOCATIONS_UPDATED}_{entry_id}")
+    _notify_data_updated(hass, entry_id)
+    connection.send_result(msg["id"], {"success": True})
+
+
+@websocket_api.websocket_command(
     {vol.Required("type"): f"{DOMAIN}/remove_location", vol.Required("name"): str}
 )
 @websocket_api.async_response
@@ -178,4 +195,5 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_remove_item)
     websocket_api.async_register_command(hass, ws_adjust_quantity)
     websocket_api.async_register_command(hass, ws_add_location)
+    websocket_api.async_register_command(hass, ws_rename_location)
     websocket_api.async_register_command(hass, ws_remove_location)

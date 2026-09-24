@@ -39,4 +39,4 @@ CHECK_INTERVAL_MINUTES = 60
 
 STATIC_URL_BASE = "/inventory_manager_static"
 CARD_FILENAME = "inventory-card.js"
-CARD_VERSION = "1.1.0"
+CARD_VERSION = "1.2.0"

@@ -1,0 +1,155 @@
+add_item:
+  name: Pridať položku
+  description: Pridá novú položku do inventára.
+  fields:
+    name:
+      name: Názov
+      required: true
+      selector:
+        text:
+    location:
+      name: Miestnosť
+      required: true
+      selector:
+        text:
+    quantity:
+      name: Počet
+      default: 1
+      selector:
+        number:
+          min: 0
+          step: 0.1
+    unit:
+      name: Jednotka
+      example: "ks, kg, l"
+      selector:
+        text:
+    expiration:
+      name: Dátum exspirácie
+      selector:
+        date:
+    threshold:
+      name: Prah nízkeho stavu
+      description: Ak počet klesne na túto hodnotu alebo nižšie, položka sa označí ako "nízky stav".
+      selector:
+        number:
+          min: 0
+          step: 0.1
+    category:
+      name: Kategória
+      selector:
+        text:
+    notes:
+      name: Poznámka
+      selector:
+        text:
+
+update_item:
+  name: Upraviť položku
+  description: Upraví existujúcu položku podľa item_id.
+  fields:
+    item_id:
+      name: ID položky
+      required: true
+      selector:
+        text:
+    name:
+      name: Názov
+      selector:
+        text:
+    location:
+      name: Miestnosť
+      selector:
+        text:
+    quantity:
+      name: Počet
+      selector:
+        number:
+          min: 0
+          step: 0.1
+    unit:
+      name: Jednotka
+      selector:
+        text:
+    expiration:
+      name: Dátum exspirácie
+      selector:
+        date:
+    threshold:
+      name: Prah nízkeho stavu
+      selector:
+        number:
+          min: 0
+          step: 0.1
+    category:
+      name: Kategória
+      selector:
+        text:
+    notes:
+      name: Poznámka
+      selector:
+        text:
+
+remove_item:
+  name: Odstrániť položku
+  description: Odstráni položku z inventára.
+  fields:
+    item_id:
+      name: ID položky
+      required: true
+      selector:
+        text:
+
+consume:
+  name: Spotrebovať
+  description: Zníži počet kusov danej položky (napr. po spotrebovaní).
+  fields:
+    item_id:
+      name: ID položky
+      required: true
+      selector:
+        text:
+    amount:
+      name: Množstvo
+      default: 1
+      selector:
+        number:
+          min: 0
+          step: 0.1
+
+restock:
+  name: Doplniť zásoby
+  description: Zvýši počet kusov danej položky (napr. po nákupe).
+  fields:
+    item_id:
+      name: ID položky
+      required: true
+      selector:
+        text:
+    amount:
+      name: Množstvo
+      default: 1
+      selector:
+        number:
+          min: 0
+          step: 0.1
+
+add_location:
+  name: Pridať miestnosť
+  description: Pridá novú miestnosť/úložisko (napr. Špajza, Skrinka).
+  fields:
+    name:
+      name: Názov miestnosti
+      required: true
+      selector:
+        text:
+
+remove_location:
+  name: Odstrániť miestnosť
+  description: Odstráni miestnosť. Položky sa presunú do prvej zostávajúcej miestnosti.
+  fields:
+    name:
+      name: Názov miestnosti
+      required: true
+      selector:
+        text:

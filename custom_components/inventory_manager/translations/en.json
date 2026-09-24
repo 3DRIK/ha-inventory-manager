@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Inventory Manager",
+        "description": "Enter comma-separated locations (e.g. Pantry, Fridge, Freezer) and how many days before expiration you want to be warned.",
+        "data": {
+          "locations": "Locations",
+          "expiry_warning_days": "Warn before expiration (days)"
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Enter at least one location."
+    },
+    "abort": {
+      "single_instance_allowed": "Inventory Manager is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Inventory Manager settings",
+        "data": {
+          "locations": "Locations",
+          "expiry_warning_days": "Warn before expiration (days)"
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Enter at least one location."
+    }
+  },
+  "issues": {
+    "low_stock": {
+      "title": "Low stock",
+      "description": "These items have reached or dropped below their threshold: {items}."
+    },
+    "expiring_soon": {
+      "title": "Items expiring soon",
+      "description": "These items will expire soon: {items}."
+    }
+  }
+}

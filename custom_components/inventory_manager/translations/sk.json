@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastaviť Inventory Manager",
+        "description": "Zadaj miestnosti/úložiská oddelené čiarkou (napr. Špajza, Chladnička, Mraznička) a po koľkých dňoch pred exspiráciou chceš byť upozornený.",
+        "data": {
+          "locations": "Miestnosti",
+          "expiry_warning_days": "Upozorniť pred exspiráciou (dni)"
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Zadaj aspoň jednu miestnosť."
+    },
+    "abort": {
+      "single_instance_allowed": "Inventory Manager je už nastavený."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nastavenia Inventory Manager",
+        "data": {
+          "locations": "Miestnosti",
+          "expiry_warning_days": "Upozorniť pred exspiráciou (dni)"
+        }
+      }
+    },
+    "error": {
+      "no_locations": "Zadaj aspoň jednu miestnosť."
+    }
+  },
+  "issues": {
+    "low_stock": {
+      "title": "Nízky stav zásob",
+      "description": "Tieto položky dosiahli alebo klesli pod svoj prah: {items}."
+    },
+    "expiring_soon": {
+      "title": "Čoskoro exspirujúce položky",
+      "description": "Tieto položky čoskoro exspirujú: {items}."
+    }
+  }
+}

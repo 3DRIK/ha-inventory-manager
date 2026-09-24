@@ -12,6 +12,7 @@ class InventoryCard extends HTMLElement {
     this._data = { locations: [], items: [], expiry_warning_days: 7 };
     this._activeLocation = null;
     this._showAddForm = false;
+    this._editingItemId = null;
     this._unsubEvents = null;
     this._initialized = false;
   }
@@ -65,6 +66,14 @@ class InventoryCard extends HTMLElement {
     await this._hass.callWS({ type: `${DOMAIN}/${type}`, ...payload });
     await this._fetchData();
     this._render();
+  }
+
+  _esc(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   _daysUntil(dateStr) {
@@ -122,6 +131,7 @@ class InventoryCard extends HTMLElement {
       tab.textContent = loc;
       tab.addEventListener("click", () => {
         this._activeLocation = loc;
+        this._editingItemId = null;
         this._render();
       });
       tabs.appendChild(tab);
@@ -182,8 +192,16 @@ class InventoryCard extends HTMLElement {
     }
 
     items.forEach((item) => {
-      const { lowStock, expiryClass, days } = this._itemStatus(item);
       const row = document.createElement("div");
+
+      if (this._editingItemId === item.item_id) {
+        row.className = "item-row editing";
+        row.appendChild(this._renderEditForm(item));
+        list.appendChild(row);
+        return;
+      }
+
+      const { lowStock, expiryClass, days } = this._itemStatus(item);
       row.className = "item-row" + (lowStock ? " low-stock" : "");
 
       const info = document.createElement("div");
@@ -195,8 +213,8 @@ class InventoryCard extends HTMLElement {
         else expiryLabel = `exspiruje o ${days} d.`;
       }
       info.innerHTML = `
-        <div class="item-name">${item.name}${
-        item.category ? `<span class="category">${item.category}</span>` : ""
+        <div class="item-name">${this._esc(item.name)}${
+        item.category ? `<span class="category">${this._esc(item.category)}</span>` : ""
       }</div>
         <div class="item-meta">
           ${expiryLabel ? `<span class="badge ${expiryClass}">${expiryLabel}</span>` : ""}
@@ -225,6 +243,15 @@ class InventoryCard extends HTMLElement {
         this._call("adjust_quantity", { item_id: item.item_id, delta: 1 })
       );
 
+      const edit = document.createElement("button");
+      edit.className = "icon-btn edit";
+      edit.textContent = "✎";
+      edit.title = "Upraviť (názov, počet, exspirácia, prah...)";
+      edit.addEventListener("click", () => {
+        this._editingItemId = item.item_id;
+        this._render();
+      });
+
       const del = document.createElement("button");
       del.className = "icon-btn delete";
       del.textContent = "✕";
@@ -235,12 +262,68 @@ class InventoryCard extends HTMLElement {
         }
       });
 
-      controls.append(minus, qty, plus, del);
+      controls.append(minus, qty, plus, edit, del);
       row.append(info, controls);
       list.appendChild(row);
     });
 
     return list;
+  }
+
+  _renderEditForm(item) {
+    const wrap = document.createElement("div");
+    wrap.className = "edit-form";
+    wrap.innerHTML = `
+      <input type="text" id="e-name" placeholder="Názov" value="${this._esc(item.name)}" />
+      <div class="row">
+        <input type="number" id="e-qty" placeholder="Počet" value="${item.quantity}" step="0.1" />
+        <input type="text" id="e-unit" placeholder="Jednotka (ks, kg...)" value="${
+          item.unit ? this._esc(item.unit) : ""
+        }" />
+      </div>
+      <div class="row">
+        <input type="date" id="e-expiration" value="${item.expiration || ""}" />
+        <input type="number" id="e-threshold" placeholder="Prah nízkeho stavu" step="0.1" value="${
+          item.threshold ?? ""
+        }" />
+      </div>
+      <input type="text" id="e-category" placeholder="Kategória (voliteľné)" value="${
+        item.category ? this._esc(item.category) : ""
+      }" />
+      <div class="hint">Prázdne pole exspirácie/prahu ponechá pôvodnú hodnotu (nevymaže ju).</div>
+      <div class="row">
+        <button id="e-cancel" class="secondary-btn">Zrušiť</button>
+        <button id="e-submit" class="add-btn">Uložiť zmeny</button>
+      </div>
+    `;
+
+    wrap.querySelector("#e-cancel").addEventListener("click", () => {
+      this._editingItemId = null;
+      this._render();
+    });
+
+    wrap.querySelector("#e-submit").addEventListener("click", async () => {
+      const name = wrap.querySelector("#e-name").value.trim();
+      const qtyRaw = wrap.querySelector("#e-qty").value;
+      const unit = wrap.querySelector("#e-unit").value.trim();
+      const expiration = wrap.querySelector("#e-expiration").value;
+      const thresholdRaw = wrap.querySelector("#e-threshold").value;
+      const category = wrap.querySelector("#e-category").value.trim();
+
+      const payload = { item_id: item.item_id };
+      if (name) payload.name = name;
+      if (qtyRaw !== "" && !isNaN(parseFloat(qtyRaw))) payload.quantity = parseFloat(qtyRaw);
+      if (unit) payload.unit = unit;
+      if (expiration) payload.expiration = expiration;
+      if (thresholdRaw !== "") payload.threshold = parseFloat(thresholdRaw);
+      if (category) payload.category = category;
+
+      await this._call("update_item", payload);
+      this._editingItemId = null;
+      this._render();
+    });
+
+    return wrap;
   }
 
   _renderAddForm() {
@@ -339,6 +422,7 @@ const CSS = `
     border-radius: 12px; padding: 8px 12px;
   }
   .item-row.low-stock { border-color: var(--warning-color, #ffa500); }
+  .item-row.editing { display: block; }
   .item-name { font-weight: 500; }
   .category {
     margin-left: 6px; font-size: 0.75em; opacity: 0.6;
@@ -356,6 +440,7 @@ const CSS = `
     color: var(--primary-text-color);
   }
   .icon-btn.delete { color: var(--error-color, #f44336); }
+  .icon-btn.edit { font-size: 0.9em; }
   .qty { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
   .add-form-wrap { margin-top: 12px; }
   .add-btn {
@@ -368,13 +453,14 @@ const CSS = `
     border: 1px solid var(--divider-color); background: transparent;
     color: var(--primary-text-color); cursor: pointer;
   }
-  .add-form { display: flex; flex-direction: column; gap: 8px; }
-  .add-form .row { display: flex; gap: 8px; }
-  .add-form input {
+  .add-form, .edit-form { display: flex; flex-direction: column; gap: 8px; }
+  .add-form .row, .edit-form .row { display: flex; gap: 8px; }
+  .add-form input, .edit-form input {
     flex: 1; padding: 8px; border-radius: 8px;
     border: 1px solid var(--divider-color, #444);
     background: var(--card-background-color); color: var(--primary-text-color);
   }
+  .edit-form .hint { font-size: 0.75em; opacity: 0.6; }
 `;
 
 customElements.define("inventory-card", InventoryCard);

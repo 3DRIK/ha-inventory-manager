@@ -14,6 +14,8 @@ class InventoryCard extends HTMLElement {
     this._showAddForm = false;
     this._editingItemId = null;
     this._locationMenuFor = null;
+    this._search = "";
+    this._sortBy = "name";
     this._longPressTimer = null;
     this._longPressTriggered = false;
     this._unsubEvents = null;
@@ -117,6 +119,7 @@ class InventoryCard extends HTMLElement {
 
     content.appendChild(this._renderTabs());
     content.appendChild(this._renderSummary());
+    content.appendChild(this._renderToolbar());
     content.appendChild(this._renderItemList());
     content.appendChild(this._renderAddForm());
 
@@ -260,18 +263,78 @@ class InventoryCard extends HTMLElement {
     return wrap;
   }
 
+  _norm(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  _renderToolbar() {
+    const bar = document.createElement("div");
+    bar.className = "toolbar";
+    bar.innerHTML = `
+      <input type="search" id="search-input" placeholder="Hľadať podľa názvu…" value="${this._esc(this._search)}" />
+      <select id="sort-select" title="Zoradiť podľa">
+        <option value="name">Zoradiť: Názov</option>
+        <option value="expiration">Zoradiť: Exspirácia</option>
+        <option value="category">Zoradiť: Kategória</option>
+      </select>
+    `;
+
+    const sel = bar.querySelector("#sort-select");
+    sel.value = this._sortBy;
+    sel.addEventListener("change", () => {
+      this._sortBy = sel.value;
+      this._refreshList();
+    });
+
+    // Only the list is re-rendered while typing, so the input keeps focus.
+    bar.querySelector("#search-input").addEventListener("input", (e) => {
+      this._search = e.target.value;
+      this._refreshList();
+    });
+
+    return bar;
+  }
+
+  _refreshList() {
+    const old = this.shadowRoot.querySelector(".item-list");
+    if (old) old.replaceWith(this._renderItemList());
+  }
+
+  _compareItems(a, b) {
+    const byName = a.name.localeCompare(b.name, "sk");
+    if (this._sortBy === "expiration") {
+      const ea = a.expiration || "9999-12-31";
+      const eb = b.expiration || "9999-12-31";
+      return ea.localeCompare(eb) || byName;
+    }
+    if (this._sortBy === "category") {
+      const ca = a.category || "";
+      const cb = b.category || "";
+      if (!ca && cb) return 1;
+      if (ca && !cb) return -1;
+      return ca.localeCompare(cb, "sk") || byName;
+    }
+    return byName;
+  }
+
   _renderItemList() {
     const list = document.createElement("div");
     list.className = "item-list";
 
     const items = this._data.items
       .filter((i) => i.location === this._activeLocation)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((i) => !this._search || this._norm(i.name).includes(this._norm(this._search)))
+      .sort((a, b) => this._compareItems(a, b));
 
     if (items.length === 0) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "Zatiaľ žiadne položky v tejto miestnosti.";
+      empty.textContent = this._search
+        ? "Nič sa nenašlo."
+        : "Zatiaľ žiadne položky v tejto miestnosti.";
       list.appendChild(empty);
     }
 
@@ -498,6 +561,13 @@ const CSS = `
   }
   .pill.warn { background: rgba(255, 193, 7, 0.25); }
   .pill.danger { background: rgba(244, 67, 54, 0.25); }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+  .toolbar input, .toolbar select {
+    padding: 8px; border-radius: 8px; font-size: 0.9em;
+    border: 1px solid var(--divider-color, #444);
+    background: var(--card-background-color); color: var(--primary-text-color);
+  }
+  .toolbar input { flex: 1; min-width: 0; }
   .item-list { display: flex; flex-direction: column; gap: 6px; }
   .empty { opacity: 0.6; padding: 12px 0; font-style: italic; }
   .item-row {
